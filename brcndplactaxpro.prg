@@ -142,6 +142,14 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
 
    AEVAL(oCNDPLACTAXPRO:aTipDoc,{|a,n| AADD(oCNDPLACTAXPRO:aTipDocTxt,LEFT(a,3))})
 
+
+   oCNDPLACTAXPRO:aTipDes   :=aTable("SELECT TDC_TIPO,TDC_DESCRI FROM DPTIPDOCPRO WHERE TDC_ACTIVO",.T.)
+   AADD(oCNDPLACTAXPRO:aTipDes,SPACE(3)+" Ninguna")
+   oCNDPLACTAXPRO:aTipDesTxt:={}
+
+   AEVAL(oCNDPLACTAXPRO:aTipDes,{|a,n| AADD(oCNDPLACTAXPRO:aTipDesTxt,LEFT(a,3))})
+
+
    // Guarda los parámetros del Browse cuando cierra la ventana
    oCNDPLACTAXPRO:bValid   :={||EJECUTAR("BRWSAVEPAR",oCNDPLACTAXPRO)}
 
@@ -198,6 +206,7 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
   oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oCNDPLACTAXPRO:oBrw:aArrayData ) } 
   oCol:nWidth       := 300
   oCol:bOnPostEdit  :={|oCol,uValue,nKey|oCNDPLACTAXPRO:VALNOMBREPRO(oCol,uValue,2,nKey,NIL,.T.)}
+  oCol:nEditType    :=IIF( lView, 0, 1)
 
 
   // Campo: PRO_TIPO
@@ -306,8 +315,19 @@ ENDIF
      oCol:bOnPostEdit  :={|oCol,uValue,nLastKey,nCol|oCNDPLACTAXPRO:PUTMTODIV(uValue,10)}
   ENDIF
 
-  // Campo: CUANTOS
+  // Campo: PGC_TIPDES
   oCol:=oCNDPLACTAXPRO:oBrw:aCols[11]
+  oCol:cHeader       :='Doc.'+CRLF+'Destino'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCNDPLACTAXPRO:oBrw:aArrayData ) } 
+  oCol:nWidth        := 40
+  oCol:aEditListTxt  :=oCNDPLACTAXPRO:aTipDes
+  oCol:aEditListBound:=oCNDPLACTAXPRO:aTipDesTxt
+  oCol:nEditType     :=EDIT_LISTBOX
+  oCol:bOnPostEdit   :={|oCol,uValue,nKey|oCNDPLACTAXPRO:PUTFIELDVALUE(oCol,uValue,11,nKey,NIL,.T.,"PGC_TIPDES")}
+
+
+  // Campo: CUANTOS
+  oCol:=oCNDPLACTAXPRO:oBrw:aCols[12]
   oCol:cHeader      :='Cant.'+CRLF+'Reg'
   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCNDPLACTAXPRO:oBrw:aArrayData ) } 
   oCol:nWidth       := 144
@@ -315,14 +335,14 @@ ENDIF
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
   oCol:cEditPicture :='9,999'
-  oCol:bStrData:={|nMonto,oCol|nMonto:= oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,11],;
-                               oCol  := oCNDPLACTAXPRO:oBrw:aCols[11],;
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,12],;
+                               oCol  := oCNDPLACTAXPRO:oBrw:aCols[12],;
                                FDP(nMonto,oCol:cEditPicture)}
-  oCol:cFooter      :=FDP(aTotal[11],oCol:cEditPicture)
+  oCol:cFooter      :=FDP(aTotal[12],oCol:cEditPicture)
 
 
   // Campo: CUANTOS
-  oCol:=oCNDPLACTAXPRO:oBrw:aCols[12]
+  oCol:=oCNDPLACTAXPRO:oBrw:aCols[13]
   oCol:cHeader      :='Reg.'+CRLF+'Planif.'
   oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oCNDPLACTAXPRO:oBrw:aArrayData ) } 
   oCol:nWidth       := 70
@@ -926,6 +946,7 @@ FUNCTION LEERDATA(cWhere,oBrw,cServer,oCNDPLACTAXPRO,dDesde,dHasta,lCtaEgreso)
       cCtaDescri:="  PGC_CODCTA,CTA_DESCRI,"
 
    ENDIF
+
    cSql:=" SELECT     "+;
           "  PRO_CODIGO,   "+;
           "  PRO_NOMBRE,"+;
@@ -936,10 +957,11 @@ FUNCTION LEERDATA(cWhere,oBrw,cServer,oCNDPLACTAXPRO,dDesde,dHasta,lCtaEgreso)
           "  PGC_DESCRI,"+;
           "  PGC_TIPDOC,"+;
           "  PGC_MTODIV,"+;
+          "  PGC_TIPDES,"+;
           "  COUNT(*) AS CUANTOS,PGC_NUMERO"+;
           "  FROM DPPROVEEDOR  "+;
-          " LEFT JOIN DPPROVEEDORPROG    ON PGC_CODIGO=PRO_CODIGO "+;
-          "  LEFT JOIN dptipdocpro        ON PGC_TIPDOC=TDC_TIPO   AND TDC_TRIBUT=0  "+;   
+          "  LEFT JOIN DPPROVEEDORPROG   ON PGC_CODIGO=PRO_CODIGO "+;
+          "  LEFT JOIN dptipdocpro       ON PGC_TIPDOC=TDC_TIPO   AND TDC_TRIBUT=0  "+;   
           cJoinCta+;
           "  WHERE LEFT(PRO_SITUAC,1)"+GetWhere("=","A")+;
           "  GROUP BY PRO_CODIGO,PRO_NOMBRE,PRO_TIPO"+;
@@ -1149,7 +1171,7 @@ RETURN .T.
 
 FUNCTION PUTFIELDVALUE(oCol,uValue,nCol,nKey,NIL,.T.,cField)
    LOCAL cWhere
-   LOCAL cNumero:=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,26]
+   LOCAL cNumero:=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,13]
    LOCAL cCodPro:=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,01]
 
    oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol]:=uValue
@@ -1164,10 +1186,7 @@ FUNCTION PUTFIELDVALUE(oCol,uValue,nCol,nKey,NIL,.T.,cField)
 
    ENDIF
 
-// ? cField,cNumero,cCodPro
-
 RETURN .T.
-
 
 /*
 // Modificar el valor de la Divisa en el Documento de Origen
@@ -1181,7 +1200,7 @@ FUNCTION PUTMTODIV(nMonto,nCol)
    LOCAL cTipDoc :=aLine[09]
    LOCAL cCodPro :=aLine[01]
    LOCAL cCtaEgr :=oDp:cCtaIndef
-   LOCAL cNumero :=aLine[12] // 26]
+   LOCAL cNumero :=aLine[13] 
    LOCAL cCodCta :=aLine[05]
    LOCAL cRefere :=aLine[04]
   
@@ -1194,6 +1213,8 @@ FUNCTION PUTMTODIV(nMonto,nCol)
       cCodCta:=EJECUTAR("DPGETCTAMOD","DPCTAEGRESO_CTA",cCtaEgr,NIL,"CUENTA")
 
    ENDIF
+
+   cCtaEgr:=IF(Empty(cCtaEgr),oDp:cCtaIndef,cCtaEgr)
 
    CursorWait()
 
@@ -1214,7 +1235,7 @@ FUNCTION PUTMTODIV(nMonto,nCol)
 
    oCNDPLACTAXPRO:oBrw:Drawline(.t.)
 
-   oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,12]:=cNumero
+   oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,13]:=cNumero
 
    aTotal:=ATOTALES(oCNDPLACTAXPRO:oBrw:aArrayData)
 
@@ -1300,7 +1321,9 @@ FUNCTION EDITPROVEEDOR(nCol,lSave)
 RETURN uValue
 
 FUNCTION VALPROVEEDOR(oCol,uValue,nCol,nKey)
- LOCAL cTipDoc,oTable,cWhere:="",cCtaOld:="",cDescri,aLine:={},cWhere
+ LOCAL oBrw  :=oCNDPLACTAXPRO:oBrw
+ LOCAL cTipDoc,oTable,cWhere:="",cCtaOld:="",cDescri
+ LOCAL aLine:=oBrw:aArrayData[oBrw:nArrayAt],cWhere
 
  DEFAULT nKey:=0
 
@@ -1321,6 +1344,7 @@ FUNCTION VALPROVEEDOR(oCol,uValue,nCol,nKey)
  ENDIF
 
  cDescri:=SQLGET("DPPROVEEDOR","PRO_NOMBRE","PRO_CODIGO"+GetWhere("=",uValue))
+ cDescri:=IF(Empty(cDescri),aLine[2],cDescri)
 
  oCNDPLACTAXPRO:lAcction:=.F.
 
@@ -1336,21 +1360,77 @@ RETURN .T.
 */
 FUNCTION VALNOMBREPRO(oCol,uValue,nCol,nKey,NIL,lRefresh)
    LOCAL aLine  :=oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt]
-   LOCAL cCodigo:=aLine[1]
+   LOCAL cCodigo:=aLine[1],cCodPro:="",cTipo,nCant,cWhere,cTipPer:="N"
 
    IF Empty(uValue)
       RETURN .F.
    ENDIF
 
-   oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,nCol]:=uValue
+   // Si el codigo del proveedor esta vacio, busca el proveedor por el nombre
+   cCodPro:=SQLGET("DPPROVEEDOR","PRO_CODIGO,PRO_TIPO","PRO_NOMBRE"+GetWhere("=",uValue))
+   cTipo  :=DPSQLROW(2)
+
+   // debo buscar segun nombre
+   IF Empty(cCodigo) .AND. Empty(cCodPro)
+
+     cWhere:=EJECUTAR("GETWHERELIKE","DPPROVEEDOR","PRO_NOMBRE",uValue,"")
+
+     IF !Empty(cWhere)
+
+        nCant  := COUNT("DPPROVEEDOR",cWhere)
+
+        IF nCant=0 .OR. nCant=1
+
+           cCodPro:=SQLINCREMENTAL("DPPROVEEDOR","PRO_CODIGO",[LEFT(PRO_CODIGO,1)<>"G"],NIL,NIL,NIL,10)
+           cCodPro:=PADR(cCodPro,10)
+           cTipo  :="Prestador de Servicios"
+           cCodigo:=cCodPro
+
+        ELSE
+
+          cCodPro:=EJECUTAR("REPBDLIST","DPPROVEEDOR","PRO_CODIGO,PRO_NOMBRE",.F.,cWhere,NIL,NIL,uValue,NIL,NIL,"PRO_CODIGO") 
+
+          IF !Empty(cCodPro)
+            uValue :=SQLGET("DPPROVEEDOR","PRO_NOMBRE,PRO_TIPO","PRO_CODIGO"+GetWhere("=",cCodPro))
+            cTipo  :=DPSQLROW(2)
+            cTipo  :=IF(Empty(cTipo),"Prestador de Servicios",cTipo)
+          ENDIF
+
+        ENDIF
+
+     ENDIF
+   
+   ENDIF
+
+   IF !Empty(cCodPro)
+      oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,nCol-1]:=cCodPro
+      oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,nCol]  :=uValue
+      oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,nCol+1]:=cTipo
+      oCNDPLACTAXPRO:oBrw:nColSel:=oCNDPLACTAXPRO:oBrw:nColSel+2
+   ELSE
+     oCNDPLACTAXPRO:oBrw:aArrayData[oCNDPLACTAXPRO:oBrw:nArrayAt,nCol]:=uValue
+   ENDIF
+
    oCNDPLACTAXPRO:oBrw:DrawLine(.T.)
+
    oCNDPLACTAXPRO:oBrw:nColSel:=oCNDPLACTAXPRO:oBrw:nColSel+1
 
-   EJECUTAR("CREATERECORD","DPPROVEEDOR",{"PRO_CODIGO","PRO_NOMBRE" ,"PRO_SITUAC","PRO_TIPO"},;
-                                         {cCodigo     ,uValue       ,"Activo"    ,aLine[3]},;
-                                           NIL,.T.,"PRO_CODIGO"+GetWhere("=",cCodigo))
+   IF !Empty(cCodigo)
 
-   oCNDPLACTAXPRO:PUTMTODIV(aLine[10-1],10-1) // Inserta el registro con valor Cero
+     aLine[3]:="Prestador de Servicios"
+     cTipPer :=LEFT(cCodigo,1)
+     cTipPer :=IF(cTipPer="V" .OR. ISDIGIT(cTipPer),"N",cTipPer)
+
+     EJECUTAR("CREATERECORD","DPPROVEEDOR",{"PRO_CODIGO","PRO_NOMBRE" ,"PRO_SITUAC","PRO_TIPO","PRO_TIPPER","PRO_ZONANL"},;
+                                           {cCodigo     ,uValue       ,"A"         ,aLine[3]  ,cTipPer     ,"N"},;
+                                            NIL,.T.,"PRO_CODIGO"+GetWhere("=",cCodigo))
+
+     // agrega en la tabla DPRIF
+     EJECUTAR("DPPROVEETORIF",cCodigo)
+
+   ENDIF
+
+   oCNDPLACTAXPRO:PUTMTODIV(aLine[10],10) // Inserta el registro con valor Cero
 
 RETURN .T.
 
@@ -1402,7 +1482,7 @@ FUNCTION VALNOMBREEGR(oCol,uValue,nCol,nKey,NIL,lRefresh)
                                          {cCodigo   ,uValue     ,oDp:cCtaIndef,.T.       ,.T.      },;
                                            NIL,.T.,"CEG_CODIGO"+GetWhere("=",cCodigo))
 
-   oCNDPLACTAXPRO:PUTMTODIV(aLine[10-1],10-1) // Inserta el registro con valor Cero
+   oCNDPLACTAXPRO:PUTMTODIV(aLine[10],10) // Inserta el registro con valor Cero
 
 RETURN .T.
 
